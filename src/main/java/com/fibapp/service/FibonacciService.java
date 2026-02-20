@@ -42,7 +42,7 @@ public class FibonacciService {
 
         synchronized (sequence) {
 
-            if (sequence.isEmpty()) {
+            if (sequence.size() == 1) {
                 throw new FibonacciRuntimeException("Back limit reached");
             }
 
