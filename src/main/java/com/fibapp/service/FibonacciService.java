@@ -3,65 +3,48 @@ package com.fibapp.service;
 import com.fibapp.exception.FibonacciRuntimeException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 @Service
 public class FibonacciService {
 
-    private final Map<String, List<Long>> clientSequences = new ConcurrentHashMap<>();
+    private final Map<String, Integer> clientIndexStorage = new ConcurrentHashMap<>();
+    private final Map<Integer, Long> fiboIndexValueStorage = new ConcurrentHashMap<>(){{
+       put(0, 1L);
+       put(1, 1L);
+    }};
 
     public long next(String clientId) {
-
-        final List<Long> sequence = clientSequences.computeIfAbsent(clientId, id -> new ArrayList<>());
-
-        synchronized (sequence) {
-
-            if (sequence.size() < 2) {
-                sequence.add(1L);
-                return 1L;
-            }
-
-            int lastIndex = sequence.size() - 1;
-            long next = sequence.get(lastIndex) + sequence.get(lastIndex - 1);
-
-            sequence.add(next);
-            return next;
-        }
+        final int currentIndex = clientIndexStorage.compute(
+                clientId, (clientKey,indexValue) -> indexValue == null ? 0 : ++indexValue
+        );
+        return computeFibonacciNumber(currentIndex);
     }
 
     public String back(String clientId) {
-
-        final List<Long> sequence = clientSequences.get(clientId);
-
-        if (sequence == null) {
-            throw new FibonacciRuntimeException("Client does not exist");
-        }
-
-        synchronized (sequence) {
-
-            if (sequence.size() == 1) {
+        clientIndexStorage.compute(clientId, (clientKey, indexValue) -> {
+            if (indexValue == null || indexValue == 0) {
                 throw new FibonacciRuntimeException("Back limit reached");
             }
-
-            sequence.removeLast();
-
-            return "OK";
-        }
+            return --indexValue;
+        });
+        return "OK";
     }
 
     public List<Long> list(String clientId) {
-
-        final List<Long> sequence = clientSequences.get(clientId);
-
-        if (sequence == null) {
+        final Integer currentIndex = clientIndexStorage.get(clientId);
+        if (currentIndex == null) {
             throw new FibonacciRuntimeException("Client does not exist");
         }
+        return IntStream.rangeClosed(0, currentIndex).mapToObj(this::computeFibonacciNumber).toList();
+    }
 
-        synchronized (sequence) {
-            return sequence.stream().toList();
-        }
+    private long computeFibonacciNumber(int index) {
+        return fiboIndexValueStorage.computeIfAbsent(
+                index, i -> fiboIndexValueStorage.get(i - 1) + fiboIndexValueStorage.get(i - 2)
+        );
     }
 }
