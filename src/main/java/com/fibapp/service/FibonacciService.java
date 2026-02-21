@@ -61,7 +61,7 @@ public class FibonacciService {
         }
 
         synchronized (sequence) {
-            return new ArrayList<>(sequence);
+            return sequence.stream().toList();
         }
     }
 }
